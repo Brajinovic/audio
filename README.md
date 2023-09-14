@@ -82,10 +82,10 @@ Depends on: opus.h, sound.h, stdio.h, threads.h
 
 
 ### Create encoder handle
-For creating the encoder handle we need to create the *encoder_config_t* structure and populate it with our desired configuration. Later, we call the *orqa_create_encoder* function with the structure pointer being the only argument. The encoder handle is going to be placed inside the structure, in the *encoder* field of the structure.
+For creating the encoder handle we need to create the *encoder_config_t* structure and populate it with our desired configuration. Later, we call the *create_encoder* function with the structure pointer being the only argument. The encoder handle is going to be placed inside the structure, in the *encoder* field of the structure.
 
 ### Encode
-In order to encode raw audio data, we need to call *encoder_config_t* whilst passing the *orqa_encoder_config_t* structure pointer, raw data pointer and output buffer pointer for the encoded OPUS data.
+In order to encode raw audio data, we need to call *encoder_config_t* whilst passing the *encoder_config_t* structure pointer, raw data pointer and output buffer pointer for the encoded OPUS data.
 
 ### Record and encode - orqa_capture_audio
 This function was made to be run in a different thread than the main program. It requires the *opus_context_t* structure pointer as an argument. The structure holds all the before mentioned structures and buffers: *raw_audio_buffer*, *opus_audio_buffer*, *mic_config_t*, *encoder_config_t*, *thread_handle*. This function calls the *record* function and fills the *raw_audio_buffer* after which the *encode* function is called to encode the captured data and the encoded data is saved in the *opus_audio_buffer* buffer.
