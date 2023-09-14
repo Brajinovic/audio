@@ -91,4 +91,3 @@ In order to encode raw audio data, we need to call *encoder_config_t* whilst pas
 This function was made to be run in a different thread than the main program. It requires the *opus_context_t* structure pointer as an argument. The structure holds all the before mentioned structures and buffers: *raw_audio_buffer*, *opus_audio_buffer*, *mic_config_t*, *encoder_config_t*, *thread_handle*. This function calls the *record* function and fills the *raw_audio_buffer* after which the *encode* function is called to encode the captured data and the encoded data is saved in the *opus_audio_buffer* buffer.
 
 </details>
-##############################################################################################
