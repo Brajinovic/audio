@@ -1,98 +1,6 @@
 <details>
 <summary>
 
-# DeviceTree
-
-</summary>
-This solution uses the SAI5 interface and ALSA to record and play audio using the SPH0645 digital microphone and I2S communication protocol.In order to use the SAI5 interface, we need to enable and configure it in the device tree file (in my case it is imx8mm-evk.dtsi). 
-Our first order of business is adding the codec_dummy node and sound-sai5 interface node to /. The codec_dummy node is important for recording audio. Usually you would use a codec to convert the analog audio signals to digital form, but we have a digital microphone which does this step already so we only need to forward the data we get from the microphone. Hence, we are using the "snd-soc-dummy" codec.
-	
-	```
-	codec_dummy: codec_dummy {
-    	compatible = "asoc,snd-soc-dummy";
-    	#sound-dai-cells = <0>;
-    	frame-master;
-    	bitclock-master;
-    	status = "okay";
-    	};
-    ```
-
-Secondly, we add the sound-sai5 node which represents the binding of the SAI5 interface and the dummy_codec in order to create an interface recognizable and usable by ALSA. Here we are using the "simple-audio-card" generic driver as we don't have a working sph0645 driver, the ones I have found are outdated and do not work(the stock version does not even compile but when I 'fix' the errors and it does compile, it does not work). In this node we set the interface name that will show up later in the OS, the communication format(I2S), we link the SAI5 interface and select which clock we are using.
-
-```
-sound-sai5 {
-		compatible = "simple-audio-card";
-	
-		simple-audio-card,name="sound | sai5";
-		simple-audio-card,format="i2s";
-	
-		simple-audio-card,frame-master=<&sai5>;
-		simple-audio-card,bitclock-master=<&sai5>;
-		status="okay";
-	
-		cpu_dai:simple-audio-card,cpu{
-				sound-dai=<&sai5>;
-				system-clock-frequency=<&clk IMX8MM_CLK_SAI5_ROOT>;
-		};
-	
-		codec_dai: simple-audio-card,codec{
-				sound-dai=<&codec_dummy>;
-				system-clock-frequency=<&clk IMX8MM_CLK_SAI5_ROOT>;
-		};
-	};
-```
-
-Next, we disable the "lcdif" node. Why? Because the node uses SAI5 pins which creates collisions... check out the "pinctrl_pdm" node under "iomuxc". To disable the node, change the "status" property from "okay" to "disabled":
-
-	status = "disabled";
-
-Next, we toggle the ext_osc value of the "pcie0" node and disable the node as it gives us errors on bootup:
-
-	ext_osc = <0>;
-	status = "disabled";
-
-
-We do the same for the "pcie0_ep" node.
-
-Next, we edit the "sai5" node so it looks like this:
-
-	```
-	&sai5 {
-		compatible="fsl,imx8mm-sai";
-    	pinctrl-names = "default";
-    	pinctrl-0 = <&pinctrl_sai5>;
-		assigned-clocks = <&clk IMX8MM_CLK_SAI5>;
-		assigned-clock-parents = <&clk IMX8MM_AUDIO_PLL1_OUT>;
-		assigned-clock-rates = <24576000>;
-        	
-    	fsl,sai-mclk-direction-output;
-    	fsl,txmasterflag = <0>;
-    	fsl,mode="i2s-master";
-    	status="okay";
-	};
-	```
-The frequency can be ether 24576000 or 12288000 since the BSP PLL-s work with only those 2 frequencies.
-
-The last thing for the device tree, we need to define which pins we are going to use. We do that in the "pinctrl_sai5" node under the "iomuxc". In order to find out the exact names I need, I searched the documentation(the biggest one, 5k+ page one), chapter 8, Chip IO and Pinmux. The addresses of the pins are all the same, namely 0xd6. Don't let it fool you.There is a header file with the correct addresses, your only job here is to specity the correct pin name and function and you are set.
-
-	pinctrl_sai5: sai5grp {
-		fsl,pins = <
-			MX8MM_IOMUXC_SAI5_MCLK_SAI5_MCLK	0xd6
-			MX8MM_IOMUXC_SAI5_RXD0_SAI5_RX_DATA0	0xd6
-			MX8MM_IOMUXC_SAI5_RXD1_SAI5_TX_SYNC    0xd6
-			MX8MM_IOMUXC_SAI5_RXD2_SAI5_TX_BCLK    0xd6
-		>;
-	};
-
-
-Lastly, we need to edit the /sound/soc/soc-utils.c file. We need to add a few things to it, all of which is documented in the patch file. Namely, we are adding a "snd_soc_dummy" configuraton without which we will not see the microphone with ALSA.
-
-After all of the changes, we build the project and flash it to the board.When the system is all booted up, after running the "arecord -l" command, we should see  the "sound | sai5" interface (or a different named one if you changed the name) and we should be able to interact with it.
-</details>
-################################################################################
-<details>
-<summary>
-
 # ALSA
 
 </summary>
@@ -131,13 +39,13 @@ Be carefull about selecting the sample rate(or any other parameter) as not all o
 Depends on: asoundlib.h, stdio.h
 
 ### Create mic
-In order to start recording, you need to setup the microphone. But firstly, you need to populate the structure *orqa_mic_config_t*. After that you pass that structure pointer to the *orqa_create_mic*. The function will write the pointer of the handle to the structure field *handle*.
+In order to start recording, you need to setup the microphone. But firstly, you need to populate the structure *mic_config_t*. After that you pass that structure pointer to the *create_mic*. The function will write the pointer of the handle to the structure field *handle*.
 
 ###	Record
-When it comes to recording, again, you only pass the *orqa_mic_config_t* structure pointer in addition with the output buffer pointer where the captured raw audio data will be stored. The size of the output buffer technically only needs to be the size of the frame you are have configured. 
+When it comes to recording, again, you only pass the *mic_config_t* structure pointer in addition with the output buffer pointer where the captured raw audio data will be stored. The size of the output buffer technically only needs to be the size of the frame you are have configured. 
 
 ###	Destroy mic
-In order to destroy the microphone handle, you pass the handle pointer to the *orqa_destroy_mic* function.
+In order to destroy the microphone handle, you pass the handle pointer to the *destroy_mic* function.
 
 </details>
 ##############################################################################
@@ -174,29 +82,13 @@ Depends on: opus.h, sound.h, stdio.h, threads.h
 
 
 ### Create encoder handle
-For creating the encoder handle we need to create the *orqa_encoder_config_t* structure and populate it with our desired configuration. Later, we call the *orqa_create_encoder* function with the structure pointer being the only argument. The encoder handle is going to be placed inside the structure, in the *encoder* field of the structure.
+For creating the encoder handle we need to create the *encoder_config_t* structure and populate it with our desired configuration. Later, we call the *orqa_create_encoder* function with the structure pointer being the only argument. The encoder handle is going to be placed inside the structure, in the *encoder* field of the structure.
 
 ### Encode
-In order to encode raw audio data, we need to call *orqa_encoder_config_t* whilst passing the *orqa_encoder_config_t* structure pointer, raw data pointer and output buffer pointer for the encoded OPUS data.
+In order to encode raw audio data, we need to call *encoder_config_t* whilst passing the *orqa_encoder_config_t* structure pointer, raw data pointer and output buffer pointer for the encoded OPUS data.
 
 ### Record and encode - orqa_capture_audio
-This function was made to be run in a different thread than the main program. It requires the *orqa_opus_context_t* structure pointer as an argument. The structure holds all the before mentioned structures and buffers: *raw_audio_buffer*, *opus_audio_buffer*, *orqa_mic_config_t*, *orqa_encoder_config_t*, *thread_handle*. This function calls the *orqa_record* function and fills the *raw_audio_buffer* after which the *orqa_encode* function is called to encode the captured data and the encoded data is saved in the *opus_audio_buffer* buffer.
+This function was made to be run in a different thread than the main program. It requires the *opus_context_t* structure pointer as an argument. The structure holds all the before mentioned structures and buffers: *raw_audio_buffer*, *opus_audio_buffer*, *mic_config_t*, *encoder_config_t*, *thread_handle*. This function calls the *record* function and fills the *raw_audio_buffer* after which the *encode* function is called to encode the captured data and the encoded data is saved in the *opus_audio_buffer* buffer.
 
 </details>
 ##############################################################################################
-<details>
-<summary>
-
-# WebRTC - OPUS extension
-</summary>
-
-## SDP
-To make the whole thing work one needs to edit the SDP offer in which to pay attention to the ports and sources beeing used for sending audio and video data. The ports must be the same if using the BUNDLE policy but the SSRC must be different. 
-
-## Debugging
-On Chrome there is the webrtc-internals utility which is handy to use when debugging. If the audio packets are sent and recieved correctly, the tool will pick up on the codec information(sample rate, encoder, number of chanells). It it does not pick it up, check the SDP configuration and the RTP packet being sent. Chances are one of those two things is fucked. 
-
-## Audio payload
-The audio data must start with 0xFC and be 160 bytes in size(including the 0xFC first byte). Atop of that we have 12 bytes of RTP header data. If you recieve the audio data but it is just noise or incomprehendable, check the encoder or the way to parse and prepair the data for sending. 
-
-</details>
