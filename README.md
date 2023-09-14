@@ -39,13 +39,13 @@ Be carefull about selecting the sample rate(or any other parameter) as not all o
 Depends on: asoundlib.h, stdio.h
 
 ### Create mic
-In order to start recording, you need to setup the microphone. But firstly, you need to populate the structure *orqa_mic_config_t*. After that you pass that structure pointer to the *orqa_create_mic*. The function will write the pointer of the handle to the structure field *handle*.
+In order to start recording, you need to setup the microphone. But firstly, you need to populate the structure *mic_config_t*. After that you pass that structure pointer to the *create_mic*. The function will write the pointer of the handle to the structure field *handle*.
 
 ###	Record
-When it comes to recording, again, you only pass the *orqa_mic_config_t* structure pointer in addition with the output buffer pointer where the captured raw audio data will be stored. The size of the output buffer technically only needs to be the size of the frame you are have configured. 
+When it comes to recording, again, you only pass the *mic_config_t* structure pointer in addition with the output buffer pointer where the captured raw audio data will be stored. The size of the output buffer technically only needs to be the size of the frame you are have configured. 
 
 ###	Destroy mic
-In order to destroy the microphone handle, you pass the handle pointer to the *orqa_destroy_mic* function.
+In order to destroy the microphone handle, you pass the handle pointer to the *destroy_mic* function.
 
 </details>
 ##############################################################################
@@ -82,13 +82,12 @@ Depends on: opus.h, sound.h, stdio.h, threads.h
 
 
 ### Create encoder handle
-For creating the encoder handle we need to create the *orqa_encoder_config_t* structure and populate it with our desired configuration. Later, we call the *orqa_create_encoder* function with the structure pointer being the only argument. The encoder handle is going to be placed inside the structure, in the *encoder* field of the structure.
+For creating the encoder handle we need to create the *encoder_config_t* structure and populate it with our desired configuration. Later, we call the *create_encoder* function with the structure pointer being the only argument. The encoder handle is going to be placed inside the structure, in the *encoder* field of the structure.
 
 ### Encode
-In order to encode raw audio data, we need to call *orqa_encoder_config_t* whilst passing the *orqa_encoder_config_t* structure pointer, raw data pointer and output buffer pointer for the encoded OPUS data.
+In order to encode raw audio data, we need to call *encoder_config_t* whilst passing the *encoder_config_t* structure pointer, raw data pointer and output buffer pointer for the encoded OPUS data.
 
 ### Record and encode - orqa_capture_audio
-This function was made to be run in a different thread than the main program. It requires the *orqa_opus_context_t* structure pointer as an argument. The structure holds all the before mentioned structures and buffers: *raw_audio_buffer*, *opus_audio_buffer*, *orqa_mic_config_t*, *orqa_encoder_config_t*, *thread_handle*. This function calls the *orqa_record* function and fills the *raw_audio_buffer* after which the *orqa_encode* function is called to encode the captured data and the encoded data is saved in the *opus_audio_buffer* buffer.
+This function was made to be run in a different thread than the main program. It requires the *opus_context_t* structure pointer as an argument. The structure holds all the before mentioned structures and buffers: *raw_audio_buffer*, *opus_audio_buffer*, *mic_config_t*, *encoder_config_t*, *thread_handle*. This function calls the *record* function and fills the *raw_audio_buffer* after which the *encode* function is called to encode the captured data and the encoded data is saved in the *opus_audio_buffer* buffer.
 
 </details>
-##############################################################################################
